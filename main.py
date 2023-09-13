@@ -9,8 +9,8 @@ import numpy as np
 import random
 import argparse
 
-from classifier_models import *
-from generator_models import *
+from classifier_models.preact_resnet18 import *
+from generator_models.autoencoder import *
 
 
 def get_data(args):
@@ -62,14 +62,14 @@ def train(
     model_optimizer, gen_optimizers, scheduler, criterion, target_label, device, stage2):
         
     best_acc = 0
-    num_epochs = args.epochs-stage1 if stage2 == 0 else args.epochs-stage2
+    num_epochs = args.epochs_stage1 if stage2 == 0 else args.epochs_stage2
     
     for epoch in range(num_epochs):
-        for i, (inputs, labels) in enumerate(trainloader):
+        for i, (inputs, labels) in enumerate(train_loader):
             inputs, labels = inputs.to(device), labels.to(device)
 
             model_optimizer.zero_grad()
-            for generator_optimizer in generator_optimizers:
+            for generator_optimizer in gen_optimizers:
                 generator_optimizer.zero_grad()
             
             gen_outputs = [generator(inputs) for generator in generators]
@@ -95,7 +95,7 @@ def train(
             accumulated_loss.backward()
             model_optimizer.step()
             if stage2 == 0:
-                for generator_optimizer in generator_optimizers:
+                for generator_optimizer in gen_optimizers:
                     generator_optimizer.step()
             
             test_correct, test_total = 0, 0
@@ -103,24 +103,24 @@ def train(
             attack_success = [0 for _ in range(len(target_label))]
 
             with torch.no_grad():
-                for inputs, labels in testloader:
+                for inputs, labels in test_loader:
                     inputs, labels = inputs.to(device), labels.to(device)
                     outputs = model(inputs)
                     _, predicted = torch.max(outputs.data, 1)
                     test_total += labels.size(0)
                     test_correct += (predicted == labels).sum().item()
 
-                    for i in range(len(designate)):
+                    for i in range(len(target_label)):
                         if args.dataset == 'mnist':
                             inputs_with_trigger = inputs + args.eps * generators[i](inputs)
                         else:
-                            inputs_with_trigger = inputs + args.eps * trigger_pre(generators[i](inputs))
+                            inputs_with_trigger = inputs + args.eps * post_trigger(generators[i](inputs))
 
                         outputs = model(inputs_with_trigger)
                         predicted = torch.argmax(outputs,axis=1)
                         attack_success[i] += (predicted == torch.tensor(target_label[i])).sum()
 
-                for inputs, labels in trainloader:
+                for inputs, labels in train_loader:
                     inputs, labels = inputs.to(device), labels.to(device)
                     outputs = model(inputs)
                     _, predicted = torch.max(outputs.data, 1)
@@ -131,10 +131,10 @@ def train(
                     best_acc = test_correct/test_total * 100
                 attack_success_rates = [success / test_total for success in attack_success]
 
-                print(f"Epoch {epoch+1}/{num_epochs}, Test_accuracy: {correct / total * 100:.2f}%, Train_accuracy: {correct_train / total_train * 100:.2f}%")
+                print(f"Epoch {epoch+1}/{num_epochs}, Test_accuracy: {test_correct / test_total * 100:.2f}%, Train_accuracy: {train_correct / train_total * 100:.2f}%")
                 for i, attack_success_rate in enumerate(attack_success_rates):
                     print(f"ASR for Generator {i+1}: {attack_success_rate*100:.2f}%")
-                print("Loss1 :",loss1.item(),"Loss2 :",loss2.item(),"Loss3 :",loss3.item(),"Loss :",loss.item(),"Time :",time2-time1)
+                print("Loss1 :",loss1.item(),"Loss2 :",loss2.item(),"Loss3 :",loss3.item(),"Loss :",loss.item())
                 print()
             
 
@@ -153,12 +153,12 @@ def main(args):
     model = model.to(device)
 
     target_label = list(map(int,args.target_label.split(',')))
-    generators = [Generator().to(device) for _ in target_label]
+    generators = [autoencoder().to(device) for _ in target_label]
 
     model_optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     gen_optimizers = [optim.SGD(generator.parameters(), lr=args.lr_gen) for generator in generators]
     
-    scheduler_milestones = list(map(int, args.scheduler_miltestones.split(',')))
+    scheduler_milestones = list(map(int, args.scheduler_milestones.split(',')))
     scheduler = optim.lr_scheduler.MultiStepLR(model_optimizer, milestones=scheduler_milestones,gamma = args.gamma)
 
 
