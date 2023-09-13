@@ -28,8 +28,8 @@ def get_data(args):
         trainset = datasets.CIFAR10(root='./data', train=True,download=True, transform=transform_train)
         testset = datasets.CIFAR10(root='./data', train=False,download=True, transform=transform_test)
 
-        train_loader = DataLoader(trainset, batch_size=args.batch-size, shuffle=True, num_workers=args.num-workers)
-        test_loader = DataLoader(testset, batch_size=args.batch-size, shuffle=False, num_workers=args.num-workers)
+        train_loader = DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+        test_loader = DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
         return train_loader,test_loader
     if args.dataset == 'mnist':
@@ -44,7 +44,7 @@ def get_model(args):
         model = PreActResNet18()
     
     return model
-    
+
 
 def post_trigger(gen_output):
   temp = list()
@@ -153,13 +153,13 @@ def main(args):
 
     generators = [Generator().to(device) for _ in designate]
 
-    model_optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight-decay)
-    gen_optimizers = [optim.SGD(generator.parameters(), lr=args.lr-gen) for generator in generators]
+    model_optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
+    gen_optimizers = [optim.SGD(generator.parameters(), lr=args.lr_gen) for generator in generators]
     
-    scheduler_milestones = list(map(int, args.scheduler-miltestones.split(',')))
+    scheduler_milestones = list(map(int, args.scheduler_miltestones.split(',')))
     scheduler = optim.lr_scheduler.MultiStepLR(model_optimizer, milestones=scheduler_milestones,gamma = args.gamma)
 
-    target_label = list(map(int,args.target-label.split(',')))
+    target_label = list(map(int,args.target_label.split(',')))
 
     criterion = nn.CrossEntropyLoss()
 
@@ -184,9 +184,9 @@ def create_parser():
     parser.add_argument('--dataset', type=str, default='cifar10')
 
     parser.add_argument('--num-workers', type=int, default=2)
-    parser.add_argument('--batch-size', type=int, default=64)
+    parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--lr-gen', type=float, default=0.0001)
+    parser.add_argument('--lr_gen', type=float, default=0.0001)
     parser.add_argument('--momentum', type=float, default=0.9)
     parser.add_argument('--weight_decay', type=float, default=5e-4)
     parser.add_argument('--eps',type=list,default=0.01)
@@ -194,13 +194,13 @@ def create_parser():
     parser.add_argument('--beta', type=float, default=1)
     parser.add_argument('--delta', type=float, default=1)
 
-    parser.add_argument('--epochs-stage1', type=int, default=30)
-    parser.add_argument('--epochs-stage2', type=int, default=170)
+    parser.add_argument('--epochs_stage1', type=int, default=30)
+    parser.add_argument('--epochs_stage2', type=int, default=170)
 
     parser.add_argument('--gamma',type=float,default=0.1)
-    parser.add_argument('--scheduler-milestones',type=str,default='50,10,150')
+    parser.add_argument('--scheduler_milestones',type=str,default='50,10,150')
 
-    parser.add_argument('--target-label', type=str, default='0,1')
+    parser.add_argument('--target_label', type=str, default='0,1')
     parser.add_argument('--clsmodel', type=str, default='resnet18')
 
     return parser
