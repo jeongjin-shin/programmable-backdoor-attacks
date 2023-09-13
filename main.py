@@ -166,13 +166,13 @@ def main(args):
     #Stage1 Train
     train(
         args, train_loader, test_loader, model, generators,
-        model_optimizer, gen_optimizers, scheduler, criterion, taget_label
+        model_optimizer, gen_optimizers, scheduler, criterion, taget_label,
         device, stage2=0
     )
     #Stage2 Train
     train(
         args, train_loader, test_loader, model, generators,
-        model_optimizer, gen_optimizers, scheduler, criterion, target_label
+        model_optimizer, gen_optimizers, scheduler, criterion, target_label,
         device, stage2=1
     )
     
