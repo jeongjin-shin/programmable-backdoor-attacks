@@ -62,7 +62,13 @@ def train(
     model_optimizer, gen_optimizers, scheduler, criterion, target_label, device, stage2):
         
     best_acc = 0
-    num_epochs = args.epochs_stage1 if stage2 == 0 else args.epochs_stage2
+    if stage2 == -1:
+        num_epochs = args.epochs_pre
+    elif stage2 == 0:
+        num_epochs = args.epochs_stage1
+    elif stage2 == 1:
+        num_epochs = args.epochs_stage2
+
     
     for epoch in range(num_epochs):
         for i, (inputs, labels) in enumerate(train_loader):
@@ -164,13 +170,19 @@ def main(args):
 
     criterion = nn.CrossEntropyLoss()
 
-    #Stage1 Train
+    print('------------------start pre-training------------------')
+    train(
+        args, train_loader, test_loader, model, generators,
+        model_optimizer, gen_optimizers, scheduler, criterion, target_label,
+        device, stage2=-1
+    )
+    print('-----------------start training stage1-----------------')
     train(
         args, train_loader, test_loader, model, generators,
         model_optimizer, gen_optimizers, scheduler, criterion, target_label,
         device, stage2=0
     )
-    #Stage2 Train
+    print('-----------------start training stage2-----------------')
     train(
         args, train_loader, test_loader, model, generators,
         model_optimizer, gen_optimizers, scheduler, criterion, target_label,
@@ -197,6 +209,7 @@ def create_parser():
 
     parser.add_argument('--epochs_stage1', type=int, default=30)
     parser.add_argument('--epochs_stage2', type=int, default=170)
+    parser.add_argument('--epochs_pre', type=int, default=10)
 
     parser.add_argument('--gamma',type=float,default=0.1)
     parser.add_argument('--scheduler_milestones',type=str,default='50,10,150')
