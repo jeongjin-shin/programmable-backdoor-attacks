@@ -9,7 +9,8 @@ import numpy as np
 import random
 import argparse
 
-from models import *
+from classifier_models import *
+from generator_models import *
 
 
 def get_data(args):
@@ -151,7 +152,8 @@ def main(args):
     model = get_model(args)
     model = model.to(device)
 
-    generators = [Generator().to(device) for _ in designate]
+    target_label = list(map(int,args.target_label.split(',')))
+    generators = [Generator().to(device) for _ in target_label]
 
     model_optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
     gen_optimizers = [optim.SGD(generator.parameters(), lr=args.lr_gen) for generator in generators]
@@ -159,14 +161,13 @@ def main(args):
     scheduler_milestones = list(map(int, args.scheduler_miltestones.split(',')))
     scheduler = optim.lr_scheduler.MultiStepLR(model_optimizer, milestones=scheduler_milestones,gamma = args.gamma)
 
-    target_label = list(map(int,args.target_label.split(',')))
 
     criterion = nn.CrossEntropyLoss()
 
     #Stage1 Train
     train(
         args, train_loader, test_loader, model, generators,
-        model_optimizer, gen_optimizers, scheduler, criterion, taget_label,
+        model_optimizer, gen_optimizers, scheduler, criterion, target_label,
         device, stage2=0
     )
     #Stage2 Train
