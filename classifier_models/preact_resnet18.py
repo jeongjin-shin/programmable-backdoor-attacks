@@ -54,7 +54,5 @@ class PreActResNet18(nn.Module):
         out = self.layer4(out)
         out = self.avgpool(out)
         out = out.view(out.size(0), -1)
-
         out = self.fc(out)
-
         return out
