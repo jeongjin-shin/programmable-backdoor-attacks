@@ -21,13 +21,15 @@ def get_data(args):
             transforms.RandomAffine(0, shear=10, scale=(0.8,1.2)),
             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
             transforms.ToTensor(),
-            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
+            transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+                                      ])
         transform_test = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))])
         
         trainset = torchvision.datasets.CIFAR10(root='./data', train=True,download=True, transform=transform_train)
         testset = torchvision.datasets.CIFAR10(root='./data', train=False,download=True, transform=transform_test)
+
         train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
         test_loader = torch.utils.data.DataLoader(testset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
@@ -35,12 +37,15 @@ def get_data(args):
     #if args.dataset == 'mnist':
     #    if args.dataset == 'gtsrb':
 
+
 def get_model(args):
     if args.clsmodel == 'resnet18':
         model = ResNet18()
-    elif args.clsmodel == 'preact-resnet18':
-        model = PreActResNet18()   
+    if args.clsmodel == 'preact-resnet18':
+        model = PreActResNet18()
+    
     return model
+
 
 def post_trigger(gen_output):
   temp = list()
@@ -51,8 +56,10 @@ def post_trigger(gen_output):
     temp.append(torch.stack(temp1))
   return torch.stack(temp)
 
-def train(args, train_loader, test_loader, model, generators,
-          model_optimizer, gen_optimizers, scheduler, criterion, target_label, device, stage2):
+
+def train(
+    args, train_loader, test_loader, model, generators,
+    model_optimizer, gen_optimizers, scheduler, criterion, target_label, device, stage2):
         
     best_acc = 0
     if stage2 == -1:
@@ -62,9 +69,11 @@ def train(args, train_loader, test_loader, model, generators,
     elif stage2 == 1:
         num_epochs = args.epochs_stage2
 
+    
     for epoch in range(num_epochs):
         for i, (inputs, labels) in enumerate(train_loader):
             inputs, labels = inputs.to(device), labels.to(device)
+
             model_optimizer.zero_grad()
             for generator_optimizer in gen_optimizers:
                 generator_optimizer.zero_grad()
@@ -79,6 +88,7 @@ def train(args, train_loader, test_loader, model, generators,
             for i, target in enumerate(target_label):
                 inputs_with_trigger = inputs + triggers[i]
                 outputs = model(inputs_with_trigger)
+
 
                 loss1 = criterion(model(inputs),labels)
                 loss2 = criterion(outputs, torch.tensor([target_label[i] for _ in range(len(outputs))],device = "cuda"))
@@ -130,14 +140,17 @@ def train(args, train_loader, test_loader, model, generators,
                 print(f"Epoch {epoch+1}/{num_epochs}, Test_accuracy: {test_correct / test_total * 100:.2f}%, Train_accuracy: {train_correct / train_total * 100:.2f}%")
                 for i, attack_success_rate in enumerate(attack_success_rates):
                     print(f"ASR for Generator {i+1}: {attack_success_rate*100:.2f}%")
-                print("Loss1 :",loss1.item(),"Loss2 :",loss2.item(),"Loss3 :",loss3.item(),"Loss :",loss.item(),"\n")
-        
+                print("Loss1 :",loss1.item(),"Loss2 :",loss2.item(),"Loss3 :",loss3.item(),"Loss :",loss.item())
+                print()
+            
+
 
 
 def main(args):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     random.seed(args.seed)
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     train_loader, test_loader = get_data(args)
@@ -153,6 +166,8 @@ def main(args):
     
     scheduler_milestones = list(map(int, args.scheduler_milestones.split(',')))
     scheduler = optim.lr_scheduler.MultiStepLR(model_optimizer, milestones=scheduler_milestones,gamma = args.gamma)
+
+
     criterion = nn.CrossEntropyLoss()
 
     print('------------------start pre-training------------------')
@@ -201,6 +216,7 @@ def create_parser():
 
     parser.add_argument('--target_label', type=str, default='0,1')
     parser.add_argument('--clsmodel', type=str, default='resnet18')
+
     return parser
 
 
